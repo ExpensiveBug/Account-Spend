@@ -1,4 +1,5 @@
 streamlit
-streamlit-option-menu
-bcrypt
+firebase-admin
+pandas
 matplotlib
+streamlit-option-menu

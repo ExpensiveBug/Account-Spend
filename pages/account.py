@@ -1,105 +1,87 @@
-import streamlit as st
-import bcrypt
-import database as db
+import streamlit as st 
+import firebase_admin
+from firebase_admin import credentials, auth, db
+import hashlib
 
-# Old User account
-def user_verify(user, password):
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, password, email FROM users_record WHERE username = ?",
-                   (user,)  )
-    result = cursor.fetchone()
-    conn.close()
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "username" not in st.session_state:
+    st.session_state.username = None
+if "useremail" not in st.session_state:
+    st.session_state.useremail = None
 
-    if result:
-        db_id, db_user, db_password, db_mail = result
-        if bcrypt.checkpw(password.encode(), db_password):
-            return {
-                "user_id" : db_id,
-                "username" : db_user,
-                "email" : db_mail
-            }
-        else:
-            st.error("Invalid Password!!")
-            return None
-    else:
-        st.error("User not found :( ")
-        return None
+if not firebase_admin._apps:
+    cred = credentials.Certificate('spend-d1a69-firebase-adminsdk-fbsvc-34fb3f3eea.json')
+    firebase_admin.initialize_app(cred,{"databaseURL":'https://spend-d1a69-default-rtdb.firebaseio.com/'})          
 
-# main function
-def show():
-    st.header("Create Your :green[Account]")
-    db.create_user_table()
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-        st.session_state.username = None
-        st.session_state.mail = None
-        st.session_state.user_id = None
+def app():
+    st.title("Account")
 
-    # Show logout button if already logged in
-    if st.session_state.logged_in:
-        st.success(f"Welcome, {st.session_state.username}")
-        st.write(f"Email: {st.session_state.mail}")
-        if st.button("Logout", type="primary"):
-            db.delete_user_data(st.session_state.user_id)
-            st.session_state.clear()
-            st.success("Logged out successfully")
-            st.rerun()
-        return 
+    if not st.session_state.logged_in :
+        choice = st.selectbox('Login/Signup',['Sign Up','Login'])
+        if choice == 'Login':
+            email = st.text_input('Enter Email',key = 'login_email')
+            password = st.text_input('Enter Password', type='password',key='login_password')
 
-    acnt = st.pills("Account",["Login", "Sign Up"],selection_mode="single")
+            if st.button('Login'):
+                if not email or not password:
+                    st.warning("Fill the above details !!")
+                    return
 
-    if acnt == "Login":
-        if not st.session_state.logged_in:
-            user = st.text_input("Username",key="u_name")
-            password = st.text_input("Password", type = "password",key= "entry_gate")
+                ref = db.reference("users")
+                query = ref.order_by_child("email").equal_to(email).get()
 
-            if st.button("Login", width="stretch"):
-                user_data = user_verify(user, password)
-                if user_data:
+                if query :
+                    uid , user_data = next(iter(query.items()))
+                    if user_data.get("password") == hash_password(password):
+                        st.session_state.logged_in = True
+                        st.session_state.username = user_data.get("username")
+                        st.session_state.useremail = email
+                        st.session_state.user_id = uid   
+                        st.success("Account Logged in Successfully.")
+                        st.rerun()
+                        return
+                    else:
+                        st.error("Invalid Email or Password !!")
+                        return
+                st.error("Invalid Email or Password")
+        else :
+            email = st.text_input('Enter Email',key='signup_email')
+            password = st.text_input('Enter Password', type='password',key='signup_password')
+            user_name = st.text_input('Enter your unique username',key='signup_username')
+
+            if st.button('Create my Account'):
+                if not email or not password or not user_name:
+                    st.warning("Fill above details first !!")
+                    return
+                
+                try :
+                    user = auth.create_user(email=email, password=password)
+                    uid = user.uid
+
+                    ref = db.reference(f"users/{user.uid}")
+                    ref.set({
+                        "username": user_name,
+                        "email": email,
+                        "password": hash_password(password)
+                    })
+                    st.success("Account Created Successfully !!")
+                    st.info("Now login your account.")
                     st.balloons()
-                    st.session_state.logged_in = True
-                    st.session_state.username = user_data["username"]
-                    st.session_state.mail = user_data["email"]
-                    st.session_state.user_id = user_data["user_id"]
-                    st.success(f"Welcome, {st.session_state.username}")
-                    st.write(f"Email : {st.session_state.mail}")
-                    st.rerun()
-                else : 
-                    st.error("Invalid Username or Password !!")
-        else:  
-            st.success(f"Welcome, {st.session_state.username}")
-            st.write(f"Email : {st.session_state.mail}")
-            st.warning("Are you sure you want to logout?")
 
-            if st.button("Yes, Logout"):
-                db.delete_user_data(st.session_state.user_id)
-                st.session_state.clear()
-                st.success("Logged out successfully")
-                st.rerun()
+                except Exception as e:
+                    st.error(f"Error:{e}")
 
-    if acnt == "Sign Up":
-        user = st.text_input("Username")
-        password = st.text_input("Password", type = "password")
-        mail = st.text_input("E-mail",placeholder="example@gmail.com")
-
-        if st.button("Create my account", width = "stretch"):
-            if not user or not password or not mail :
-                st.warning("Fill all the details !!")
-            else:
-                user_id = db.create_user_account(user, password, mail)
-                if user_id : 
-                    st.snow()
-                    st.session_state.logged_in = True
-                    st.session_state.username = user
-                    st.session_state.mail = mail
-                    st.session_state.user_id = user_id
-                    st.success("Yeah, Account created Succesfully :)")
-                    st.success(f"Welcome, {user}")
-                    st.write(f"Email : {mail}")
-                    st.rerun()
-
-                else : 
-                    st.error("Username or email already exist !!")
-
+    else :
+        st.info(f"Logged in as: {st.session_state.username}")
+        st.info(f"Email: {st.session_state.useremail}")
+        if st.button("Sign Out",type="primary"):
+            st.success("Signed Out Successfully")
+            st.session_state.logged_in = False
+            st.session_state.user_id = None
+            st.session_state.username = None
+            st.session_state.useremail = None            
+            st.rerun()

@@ -11,8 +11,8 @@ if "useremail" not in st.session_state:
     st.session_state.useremail = None
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate('spend-d1a69-firebase-adminsdk-fbsvc-34fb3f3eea.json')
-    firebase_admin.initialize_app(cred,{"databaseURL":'https://spend-d1a69-default-rtdb.firebaseio.com/'})          
+    cred = credentials.Certificate(st.secrets["firebase"])
+    firebase_admin.initialize_app(cred)          
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -85,4 +85,5 @@ def app():
             st.session_state.username = None
             st.session_state.useremail = None            
             st.rerun()
+
 

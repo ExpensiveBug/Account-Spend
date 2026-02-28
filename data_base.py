@@ -3,7 +3,8 @@ import firebase_admin
 from firebase_admin import credentials, db , firestore
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate("personal-finance-tracker-429a7-e8eecd0703e4.json")
+    firebase_dict = json.loads(st.secrets["firebase"]["json"])
+    cred = credentials.Certificate(firebase_dict)
     firebase_admin.initialize_app(cred,{"databaseURL": st.secrets["firebase"]["database_url"]})
 
 def get_bill(user_id):
@@ -45,4 +46,5 @@ def delete_income(user_id):
         return True
     else:
         return False
+
 

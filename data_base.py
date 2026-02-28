@@ -4,9 +4,7 @@ from firebase_admin import credentials, db , firestore
 
 if not firebase_admin._apps:
     cred = credentials.Certificate("personal-finance-tracker-429a7-e8eecd0703e4.json")
-    firebase_admin.initialize_app(cred, {
-        "databaseURL": "https://personal-finance-tracker-429a7.firebaseio.com/"
-    })
+    firebase_admin.initialize_app(cred,{"databaseURL": st.secrets["firebase"]["database_url"]})
 
 def get_bill(user_id):
     ref = db.reference(f"users/{user_id}/expenses")
@@ -47,3 +45,4 @@ def delete_income(user_id):
         return True
     else:
         return False
+

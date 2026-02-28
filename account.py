@@ -2,6 +2,7 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, db
 import hashlib
+import json
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
@@ -11,7 +12,8 @@ if "useremail" not in st.session_state:
     st.session_state.useremail = None
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["firebase"])
+    firebase_dict = json.loads(st.secrets["firebase"]["json"])
+    cred = credentials.Certificate(firebase_dict)
     firebase_admin.initialize_app(cred)          
 
 def hash_password(password):
@@ -85,5 +87,6 @@ def app():
             st.session_state.username = None
             st.session_state.useremail = None            
             st.rerun()
+
 
 

@@ -1,71 +1,31 @@
 import streamlit as st
-import database as db
+import data_base as db
 
+def app():
+    if not st.session_state.get("logged_in",False):
+        st.title("Login Required !!")
+        st.warning("Please Login to continue!")
+        st.stop()
 
-def reset_income():
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM earnings WHERE user_id = ?"(st.session_state.user_id,))
-    conn.commit()
-    conn.close()
-    # reset interface
-    st.session_state.income_type = "Job"
-    st.session_state.amount_input = 0.0
-    st.session_state.note_input = ""
-
-def add_income():
-    sal_type = st.session_state.income_type
-    amt = st.session_state.amount_input
-    desc = st.session_state.note_input
-    user_id = st.session_state.user_id
-
-
-    if(amt <= 0):
-        st.error("Amount must be greater than zero!!")
-        return
+    st.title("Income Source")
     
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO earnings (user_id, source, amount, note) VALUES (?, ?, ?, ?)",
-                   (st.session_state.user_id, sal_type, amt, desc))   
-    conn.commit()
-    conn.close()
-    st.balloons()
+    source = st.selectbox("Select income type",["Job", "Passive Income","Investment", "Business","other"], key="in_type")
+    amt = st.number_input("Amount",min_value=0.0, step = 1000.0, key="amount")
+    note = st.text_area("Note ", placeholder="Write something about your income...", key="note")
 
-    st.session_state.income_type = "Job"
-    st.session_state.amount_input = 0.0
-    st.session_state.note_input = ""
+    if st.button("Add Income",width="stretch"):         
+        if amt <= 0 :
+            st.error("Amount must be greater that 0 !!")
+        else :
+            db.add_income(st.session_state.user_id, source ,amt,note)
+            st.balloons()
+            st.success("Income added Successfully")
 
-def show():
-    # check account login
-    if not st.session_state.logged_in:
-        st.title("🔒 Login Required")
-        st.warning("Please login or create account to continue!!")
-        st.stop() 
-
-    # Income tracking begins
-    st.set_page_config(page_title="Income Tracker", layout="centered")
-    db.create_income_table()
-
-    st.header("Income Tracker")
-
-    st.selectbox("Select income type ",["Job","Business","Asset","Interest","Other"], key = "income_type")
-    st.number_input("Amount ",min_value = 0.0, step = 100.0, key = "amount_input")
-    st.text_area("Description",placeholder="Note about your income...", key = "note_input")
-
-    st.button("Add Income",width="stretch", on_click=add_income)
-    st.button("Reset",width="stretch", on_click= reset_income)
-
-
-if __name__ == "__main__":
-    if "income_type" not in st.session_state:
-        st.session_state.income_type = "Job"
-    if "amount_input" not in st.session_state:
-        st.session_state.amount_type = 0.0
-    if "note_input" not in st.session_state:
-        st.session_state.note_input = ""
-    
-    show()
-
-
+    if st.button("Reset Income", width="content",type="primary"):
+        clean = db.delete_income(st.session_state.user_id)
+        if clean : 
+            st.info("Income Deleted")
+            st.rerun()
+        else :
+            st.info("No data found")
 

@@ -11,7 +11,7 @@ def app():
     expense_type = st.selectbox("Select the expense type",
                         ["Food", "Entertainment","Travel","Health","Electrical or Mechanical", "Miscellaneous"], key = "exp_type")
     amt = st.number_input("Amount",min_value=0.0, step = 100.0, key = "bill")
-    note = st.text_area("Note", placeholder = "Why you spend :( ", key = "bill_note")
+    note = st.text_area("Note", placeholder = "why you spent?", key = "bill_note")
 
     if st.button("Add Expense",width="stretch"):
         if amt <= 0:
@@ -28,3 +28,4 @@ def app():
             st.rerun()
         else :
             st.info("No data found")
+
